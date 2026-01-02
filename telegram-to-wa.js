@@ -35,8 +35,22 @@ async function forwardToWA(message, meta = {}) {
   try {
     const { status, data } = await axios.post(
       WA_API_URL,
-      { groupId: WA_GROUP_ID, message },
-      { headers: { 'Content-Type': 'application/json', 'x-api-key': WA_API_KEY }, timeout: 10000 }
+      {
+        chatId: WA_GROUP_ID,
+        text: message,
+        reply_to: null,
+        linkPreview: false,
+        linkPreviewHighQuality: false,
+        session: 'default'
+      },
+      {
+        headers: {
+          'accept': 'application/json',
+          'X-Api-Key': WA_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
     );
     console.log(new Date().toISOString(), 'WA OK', status, JSON.stringify({ meta, resp: data }));
   } catch (err) {
@@ -62,7 +76,7 @@ bot.on('channel_post', async (ctx) => {
   const text = pickText(ctx.update);
   if (!text) return;
   const title = ctx.update.channel_post.chat?.title || 'Channel';
-  await forwardToWA(`📣 ${title}\n${text}`, { type: 'channel_post', chatId: ctx.update.channel_post.chat?.id });
+  await forwardToWA(text, { type: 'channel_post', chatId: ctx.update.channel_post.chat?.id });
 });
 
 // Handle messages in groups/supergroups
@@ -76,7 +90,7 @@ bot.on('message', async (ctx) => {
     [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(' ') ||
     ctx.from?.username ||
     'Chat';
-  await forwardToWA(`💬 ${title}\n${text}`, { type: 'message', chatId: chat?.id });
+  await forwardToWA(text, { type: 'message', chatId: chat?.id });
 });
 
 bot.launch()
