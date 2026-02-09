@@ -23,11 +23,71 @@ const allowed = new Set((ALLOWED_CHAT_IDS || '')
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 
+function applyEntityFormatting(text, entities) {
+  if (!entities || !entities.length) return text;
+
+  const sorted = [...entities].sort((a, b) => b.offset - a.offset);
+  let result = text;
+
+  const insert = (str, index, value) => {
+    return str.slice(0, index) + value + str.slice(index);
+  };
+
+  for (const entity of sorted) {
+    const { offset, length, type } = entity;
+    const end = offset + length;
+
+    let prefix = '';
+    let suffix = '';
+
+    switch (type) {
+      case 'bold':
+        prefix = '*';
+        suffix = '*';
+        break;
+      case 'italic':
+        prefix = '_';
+        suffix = '_';
+        break;
+      case 'strikethrough':
+        prefix = '~';
+        suffix = '~';
+        break;
+      case 'code':
+        prefix = '```';
+        suffix = '```';
+        break;
+      case 'pre':
+        prefix = '```\n';
+        suffix = '\n```';
+        break;
+      case 'text_link':
+        suffix = ` (${entity.url})`;
+        break;
+      default:
+        continue;
+    }
+
+    result = insert(result, end, suffix);
+    result = insert(result, offset, prefix);
+  }
+
+  return result;
+}
+
 function pickText(u) {
-  if (u.message?.text) return u.message.text;
-  if (u.channel_post?.text) return u.channel_post.text;
-  if (u.message?.caption) return u.message.caption;
-  if (u.channel_post?.caption) return u.channel_post.caption;
+  if (u.message?.text) {
+    return applyEntityFormatting(u.message.text, u.message.entities);
+  }
+  if (u.channel_post?.text) {
+    return applyEntityFormatting(u.channel_post.text, u.channel_post.entities);
+  }
+  if (u.message?.caption) {
+    return applyEntityFormatting(u.message.caption, u.message.caption_entities);
+  }
+  if (u.channel_post?.caption) {
+    return applyEntityFormatting(u.channel_post.caption, u.channel_post.caption_entities);
+  }
   return null;
 }
 
