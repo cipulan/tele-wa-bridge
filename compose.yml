@@ -1,0 +1,23 @@
+services:
+  telegram-wa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: telegram-wa
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    init: true
+
+    mem_limit: 128m
+    cpus: 0.25
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
