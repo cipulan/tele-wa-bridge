@@ -8,7 +8,7 @@ services:
 
     restart: unless-stopped
     networks:
-      - waha-network
+      - api-wa_waha-network
 
     env_file:
       - .env
@@ -25,5 +25,5 @@ services:
         max-file: "3"
 
 networks:
-  waha-network:
+  api-wa_waha-network:
     external: true
