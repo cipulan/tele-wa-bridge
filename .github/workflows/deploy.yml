@@ -1,0 +1,28 @@
+name: Deploy to server
+
+on:
+  push:
+    branches: [main]
+
+# Queue deployments instead of running them concurrently
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 3322
+          script: |
+            set -e
+            cd /home/opc/tele-wa-bridge
+            git pull --ff-only origin main
+            docker compose up -d --build
+            docker compose ps

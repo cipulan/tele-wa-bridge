@@ -35,7 +35,7 @@ Before setting up this project, you'll need:
 
 3. **Set up environment variables**
    ```bash
-   cp .env.example .env
+   cp env.example .env
    # Edit .env with your actual values
    ```
 
@@ -103,6 +103,25 @@ pm2 restart tg-wa-bridge
 # Stop the application
 pm2 stop tg-wa-bridge
 ```
+
+### Auto Deploy via GitHub Actions
+
+Every push to `main` automatically deploys to the server (`.github/workflows/deploy.yml`):
+it SSHes in, runs `git pull`, and rebuilds/restarts the container with
+`docker compose up -d --build`.
+
+Required repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `SSH_HOST` | Server hostname/IP | `hog.pingsut.com` |
+| `SSH_USER` | SSH user | `opc` |
+| `SSH_PRIVATE_KEY` | Private key matching a key in the server's `~/.ssh/authorized_keys` | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+
+Note: `git pull` on the server must work non-interactively. If the remote uses
+SSH (`git@github.com:...`), either add a deploy key or switch it to HTTPS
+(the repo is public, no auth needed):
+`git remote set-url origin https://github.com/cipulan/tele-wa-bridge.git`
 
 ## Health Check
 
@@ -192,7 +211,7 @@ forwarder/
 ├── ecosystem.config.js     # PM2 configuration
 ├── package.json           # Dependencies and scripts
 ├── .env                   # Environment variables (create this)
-├── .env.example          # Environment variables template
+├── env.example            # Environment variables template
 └── README.md             # This file
 ```
 
