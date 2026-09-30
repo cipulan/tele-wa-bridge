@@ -30,6 +30,8 @@ const health = {
   lastTelegramUpdate: null,
   lastForwardOk: null,
   lastForwardError: null,
+  lastProbeAt: null,
+  lastProbeOk: null,
 };
 
 function applyEntityFormatting(text, entities) {
@@ -182,6 +184,47 @@ http.createServer((req, res) => {
 }).listen(HEALTH_PORT, '127.0.0.1', () => {
   console.log(`Health endpoint listening on 127.0.0.1:${HEALTH_PORT}`);
 });
+
+// healthchecks.io monitoring (optional).
+// Every interval, probe the Telegram API with getMe(): success pings the
+// check URL, failure pings <url>/fail so healthchecks.io marks it down
+// immediately instead of waiting for the timeout.
+const HEALTHCHECKS_URL = (process.env.HEALTHCHECKS_URL || '').replace(/\/$/, '');
+const HEALTHCHECKS_INTERVAL_SEC = parseInt(process.env.HEALTHCHECKS_INTERVAL_SEC || '60', 10);
+
+async function pingHealthchecks(ok) {
+  if (!HEALTHCHECKS_URL) return;
+  const url = ok ? HEALTHCHECKS_URL : `${HEALTHCHECKS_URL}/fail`;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+  } catch (err) {
+    console.error(new Date().toISOString(), 'Healthchecks.io ping failed:', err.message);
+  }
+}
+
+async function runHealthProbe() {
+  health.lastProbeAt = new Date().toISOString();
+  try {
+    await bot.telegram.getMe();
+    health.lastProbeOk = true;
+    await pingHealthchecks(true);
+  } catch (err) {
+    health.lastProbeOk = false;
+    console.error(new Date().toISOString(), 'Telegram probe failed:', err.message);
+    await pingHealthchecks(false);
+  }
+}
+
+if (HEALTHCHECKS_URL) {
+  console.log(`Healthchecks.io ping enabled: every ${HEALTHCHECKS_INTERVAL_SEC}s -> ${HEALTHCHECKS_URL}`);
+  runHealthProbe();
+  setInterval(runHealthProbe, HEALTHCHECKS_INTERVAL_SEC * 1000);
+} else {
+  console.log('Healthchecks.io ping disabled (HEALTHCHECKS_URL not set)');
+}
 
 bot.launch()
   .then(() => console.log('Bridge started. Listening for Telegram updates…'))

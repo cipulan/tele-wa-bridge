@@ -67,6 +67,8 @@ WA_GROUP_ID=your_whatsapp_group_id_here
 | `WA_API_KEY` | Authentication key for WhatsApp API | ✅ | `your_api_key_here` |
 | `WA_GROUP_ID` | Target WhatsApp group ID | ✅ | `120363025502345678` |
 | `HEALTH_PORT` | Health check endpoint port (Docker/monitoring) | ❌ | `3000` |
+| `HEALTHCHECKS_URL` | healthchecks.io ping URL (optional monitoring) | ❌ | `https://hc-ping.com/your-check-uuid` |
+| `HEALTHCHECKS_INTERVAL_SEC` | Interval between healthchecks.io pings | ❌ | `60` |
 
 ## Usage
 
@@ -118,6 +120,14 @@ The Docker Compose setup already wires this into a `healthcheck` (checks every 3
 docker compose ps
 docker inspect telegram-wa --format '{{.State.Health.Status}}'
 ```
+
+### healthchecks.io
+
+Set `HEALTHCHECKS_URL` to your check's ping URL and the container will ping it
+every `HEALTHCHECKS_INTERVAL_SEC` (default 60s). Each ping first probes the
+Telegram API (`getMe`): a successful probe pings the check URL, a failed probe
+pings `<url>/fail` so the check is marked down immediately. The UUID stays in
+your `.env` — it is never committed to the repo.
 
 ## How It Works
 
