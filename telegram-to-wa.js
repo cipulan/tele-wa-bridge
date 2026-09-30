@@ -141,7 +141,6 @@ bot.on('channel_post', async (ctx) => {
 
 // Handle messages in groups/supergroups
 bot.on('message', async (ctx) => {
-  if (ctx.from?.is_bot) return; // avoid loops
   const text = pickText(ctx.update);
   if (!text) return;
   const chat = ctx.chat;
