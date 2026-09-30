@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
+const http = require('http');
 
 const {
   TELEGRAM_BOT_TOKEN,
@@ -22,6 +23,14 @@ const allowed = new Set((ALLOWED_CHAT_IDS || '')
   .filter(Boolean));
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+
+// Health state for the /health endpoint (Docker HEALTHCHECK / monitoring)
+const health = {
+  startedAt: new Date().toISOString(),
+  lastTelegramUpdate: null,
+  lastForwardOk: null,
+  lastForwardError: null,
+};
 
 function applyEntityFormatting(text, entities) {
   if (!entities || !entities.length) return text;
@@ -113,6 +122,7 @@ async function forwardToWA(message, meta = {}) {
       }
     );
     console.log(new Date().toISOString(), 'WA OK', status, JSON.stringify({ meta, resp: data }));
+    health.lastForwardOk = new Date().toISOString();
   } catch (err) {
     console.error(
       new Date().toISOString(),
@@ -120,11 +130,13 @@ async function forwardToWA(message, meta = {}) {
       err.response?.status || '',
       err.response?.data || err.message
     );
+    health.lastForwardError = new Date().toISOString();
   }
 }
 
 // Limit to certain chats if ALLOWED_CHAT_IDS provided
 bot.use(async (ctx, next) => {
+  health.lastTelegramUpdate = new Date().toISOString();
   const chat = ctx.chat || ctx.update?.channel_post?.chat || ctx.update?.message?.chat;
   const chatId = chat?.id?.toString();
   if (allowed.size && chatId && !allowed.has(chatId)) return;
@@ -150,6 +162,25 @@ bot.on('message', async (ctx) => {
     ctx.from?.username ||
     'Chat';
   await forwardToWA(text, { type: 'message', chatId: chat?.id });
+});
+
+// Lightweight health endpoint (no extra dependencies).
+// Used by the Docker HEALTHCHECK and can be scraped by external monitoring.
+const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || '3000', 10);
+http.createServer((req, res) => {
+  if (req.url === '/health' || req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      uptimeSec: Math.floor(process.uptime()),
+      ...health,
+    }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+}).listen(HEALTH_PORT, '127.0.0.1', () => {
+  console.log(`Health endpoint listening on 127.0.0.1:${HEALTH_PORT}`);
 });
 
 bot.launch()

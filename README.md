@@ -66,6 +66,7 @@ WA_GROUP_ID=your_whatsapp_group_id_here
 | `WA_API_URL` | Your WhatsApp API gateway endpoint | ✅ | `https://api.whatsapp.com/v1/send` |
 | `WA_API_KEY` | Authentication key for WhatsApp API | ✅ | `your_api_key_here` |
 | `WA_GROUP_ID` | Target WhatsApp group ID | ✅ | `120363025502345678` |
+| `HEALTH_PORT` | Health check endpoint port (Docker/monitoring) | ❌ | `3000` |
 
 ## Usage
 
@@ -99,6 +100,23 @@ pm2 restart tg-wa-bridge
 
 # Stop the application
 pm2 stop tg-wa-bridge
+```
+
+## Health Check
+
+The app exposes a lightweight HTTP endpoint for container health checks and monitoring:
+
+```bash
+curl http://127.0.0.1:3000/health
+```
+
+Response includes `status`, `uptimeSec`, `startedAt`, `lastTelegramUpdate`, `lastForwardOk`, and `lastForwardError`.
+
+The Docker Compose setup already wires this into a `healthcheck` (checks every 30s). Check status with:
+
+```bash
+docker compose ps
+docker inspect telegram-wa --format '{{.State.Health.Status}}'
 ```
 
 ## How It Works
