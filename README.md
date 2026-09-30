@@ -110,6 +110,11 @@ Every push to `main` automatically deploys to the server (`.github/workflows/dep
 it SSHes in, runs `git pull`, and rebuilds/restarts the container with
 `docker compose up -d --build`.
 
+Before deploying, a `check` job validates everything: JS syntax
+(`node --check`), YAML files, `docker compose config`, and Dockerfile lint
+(hadolint). Deploy only runs if all checks pass. The `check` job also runs on
+pull requests (without deploying).
+
 Required repository secrets (Settings → Secrets and variables → Actions):
 
 | Secret | Description | Example |

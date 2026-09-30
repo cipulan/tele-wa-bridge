@@ -3,6 +3,8 @@ name: Deploy to server
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 # Queue deployments instead of running them concurrently
 concurrency:
@@ -10,7 +12,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Syntax check (telegram-to-wa.js)
+        run: node --check telegram-to-wa.js
+
+      - name: Validate YAML files
+        run: |
+          python3 - <<'EOF'
+          import glob, yaml
+          files = ['compose.yml'] + sorted(glob.glob('.github/workflows/*.yml'))
+          for f in files:
+              yaml.safe_load(open(f))
+              print('OK', f)
+          EOF
+
+      - name: Validate compose config
+        run: |
+          touch .env
+          docker compose config --quiet && echo "compose OK"
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
   deploy:
+    needs: check
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
